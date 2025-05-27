@@ -23,6 +23,9 @@ anti_sandbox:
     - type: "API"
     - type: "systemUptimeInSeconds"
       time_sec: 1800
+
+clean_memory:
+  enabled: true
   
 network:
   proxy_addr: "127.0.0.1"  
